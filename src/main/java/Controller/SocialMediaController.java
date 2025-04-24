@@ -1,163 +1,168 @@
 package Controller;
 
+import Model.Account;
+import Model.Message;
+
+import Service.AccountService;
+import Service.MessageService;
+
 import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import Model.Account;
-import Model.Message;
-import Service.AccountService;
-import Service.MessageService;
-import Service.ServiceException;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
-import net.bytebuddy.dynamic.DynamicType.Builder.FieldDefinition.Optional;
 
-/**
- * TODO: You will need to write your own endpoints and handlers for your controller. The endpoints you will need can be
- * found in readme.md as well as the test cases. You should
- * refer to prior mini-project labs and lecture materials for guidance on how a controller may be built.
- */
+// Control layer
 public class SocialMediaController {
+    // Instances to access service layer
+    AccountService accountService;
+    MessageService messageService;
 
-
-    // Service instances to handle business logic
-    private final AccountService accountService;
-    private final MessageService messageService;
-
-    // Constructor initializing services
-    public SocialMediaController() {
+    // Constructor
+    public SocialMediaController () {
         this.accountService = new AccountService();
         this.messageService = new MessageService();
     }
 
-    // Method to start Javalin app and define routes
     public Javalin startAPI() {
         Javalin app = Javalin.create();
 
-        // Define API endpoints
-        app.post("/register", this::registerAccount);
-        app.post("/login", this::loginAccount);
-        app.post("/messages", this::createMessage);
-        app.get("/messages", this::getAllMessages);
-        app.get("/messages/{message_id}", this::getMessageById);
-        app.delete("/messages/{message_id}", this::deleteMessageById);
-        app.patch("/messages/{message_id}", this::updateMessageById);
-        app.get("/accounts/{account_id}/messages", this::getMessagesByAccountId);
+        // register
+        app.post("/register", this::registerAccountHandler);
+
+        // login
+        app.post("/login", this::loginAccountHandler);
+
+        // add message
+        app.post("/messages", this::createMessageHandler);
+
+        // get messages
+        app.get("/messages", this::getAllMessagesHandler);
+
+        // get message
+        app.get("/messages/{message_id}", this::getMessageHandler);
+
+        // delete message
+        app.delete("/messages/{message_id}", this::deleteMessageHandler);
+
+        // update message
+        app.patch("/messages/{message_id}", this::updateMessageHandler);
+
+        // get messages for user
+        app.get("/accounts/{account_id}/messages", this::getMessageForUserHandler);
 
         return app;
     }
 
-    // Endpoint to register a new account
-    private void registerAccount(Context ctx) throws JsonProcessingException {
+    // Deserializes the request body into an account object and tasks the service layer to add it to the database
+    // Return (success): JSON of account with status 200
+    // Return (fail): status 400 (client)
+    private void registerAccountHandler(Context ctx) throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
         Account account = mapper.readValue(ctx.body(), Account.class);
-        try {
-            Account registeredAccount = accountService.createAccount(account);
-            ctx.json(mapper.writeValueAsString(registeredAccount));
-        } catch (ServiceException e) {
-            ctx.status(400); // Bad request if registration fails
+        Account addedAccount = accountService.addAccount(account);
+
+        if (addedAccount != null) {
+            ctx.json(addedAccount).status(200);
+        }
+        else {
+            ctx.status(400);
         }
     }
 
-    // Endpoint to handle user login
-    private void loginAccount(Context ctx) throws JsonProcessingException {
+    // Deserializes the request body into an account object and tasks the service layer to verify the account with the database
+    // Return (success): JSON of account with status 200
+    // Return (fail): status 400 (client)
+    private void loginAccountHandler(Context ctx) throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
         Account account = mapper.readValue(ctx.body(), Account.class);
+        Account addedAccount = accountService.loginAccount(account);
 
-        try {
-            java.util.Optional<Account> loggedInAccount = accountService.validateLogin(account);
-            if (loggedInAccount.isPresent()) {
-                ctx.sessionAttribute("logged_in_account", loggedInAccount.get());
-                ctx.json(loggedInAccount.get());
-            } else {
-                ctx.status(401); // Unauthorized if login fails
-            }
-        } catch (ServiceException e) {
-            ctx.status(401); // Unauthorized if login fails
+        if (addedAccount != null) {
+            ctx.json(addedAccount).status(200);
+        }
+        else {
+            ctx.status(401);
         }
     }
 
-    // Endpoint to create a new message
-    private void createMessage(Context ctx) throws JsonProcessingException {
+    // Deserializes the request body into an message object and tasks the service layer to add it to the database
+    // Return (success): JSON of message with status 200
+    // Return (fail): status 400
+    private void createMessageHandler(Context ctx) throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
-        Message mappedMessage = mapper.readValue(ctx.body(), Message.class);
-        try {
-            java.util.Optional<Account> account = accountService.getAccountById(mappedMessage.getPosted_by());
-            Message message = messageService.createMessage(mappedMessage, account);
-            ctx.json(message);
-        } catch (ServiceException e) {
-            ctx.status(400); // Bad request if message creation fails
+        Message message = mapper.readValue(ctx.body(), Message.class);
+        Message addedMessage = messageService.addMessage(message);
+
+        if (addedMessage != null) {
+            ctx.json(addedMessage).status(200);
+        }
+        else {
+            ctx.status(400);
         }
     }
 
-    // Endpoint to retrieve all messages
-    private void getAllMessages(Context ctx) {
+    // Tasks the service layer to return all existing messages in the database
+    // Return: JSON of messages
+    private void getAllMessagesHandler(Context ctx) throws JsonProcessingException {
         List<Message> messages = messageService.getAllMessages();
         ctx.json(messages);
     }
 
-    // Endpoint to retrieve a message by its ID
-    private void getMessageById(Context ctx) {
-        try {
-            int id = Integer.parseInt(ctx.pathParam("message_id"));
-            java.util.Optional<Message> message = messageService.getMessageById(id);
-            if (message.isPresent()) {
-                ctx.json(message.get());
-            } else {
-                ctx.status(200); // Respond with empty result if not found
-                ctx.result("");
-            }
-        } catch (NumberFormatException e) {
-            ctx.status(400); // Bad request if ID is not a number
-        } catch (ServiceException e) {
-            ctx.status(200); // Handle service exceptions gracefully
+    // Extracts the message_id from the URL path into an integer and tasks the service layer to find the message in the database
+    // Return (success): JSON of message
+    // Return (fail): empty string
+    private void getMessageHandler(Context ctx) throws JsonProcessingException {
+        int message_id = Integer.parseInt(ctx.pathParam("message_id"));
+        Message message = messageService.getMessage(message_id);
+            
+        if (message != null) {
+            ctx.json(message);
+        }
+        else {
             ctx.result("");
         }
     }
 
-    // Endpoint to delete a message by its ID
-    private void deleteMessageById(Context ctx) {
-        try {
-            int id = Integer.parseInt(ctx.pathParam("message_id"));
+    // Extracts the message_id from the URL path into an integer and tasks the service layer to delete the message from the database
+    // Return (success): JSON of message
+    // Return (fail): empty string
+    private void deleteMessageHandler(Context ctx) throws JsonProcessingException {
+        int message_id = Integer.parseInt(ctx.pathParam("message_id"));
+        Message message = messageService.deleteMessage(message_id);
 
-            java.util.Optional<Message> message = messageService.getMessageById(id);
-            if (message.isPresent()) {
-                messageService.deleteMessage(message.get());
-                ctx.json(message.get());
-            } else {
-                ctx.status(200); // Idempotent response for non-existing message
-            }
-        } catch (ServiceException e) {
-            ctx.status(200); // Handle service exceptions gracefully
+        if (message != null) {
+            ctx.json(message);
+        }
+        else {
+            ctx.result("");
         }
     }
 
-    // Endpoint to update a message by its ID
-    private void updateMessageById(Context ctx) throws JsonProcessingException {
+    // Deserializes the request body into a message object and extracts the message_id from the URL path into an integer. Then tasks the service layer to update the message in the database
+    // Return (success): JSON of message as a string status 200
+    // Return (fail): status 400
+    private void updateMessageHandler(Context ctx) throws JsonProcessingException {
+        int message_id = Integer.parseInt(ctx.pathParam("message_id"));
         ObjectMapper mapper = new ObjectMapper();
-        Message mappedMessage = mapper.readValue(ctx.body(), Message.class);
-        try {
-            int id = Integer.parseInt(ctx.pathParam("message_id"));
-            mappedMessage.setMessage_id(id);
+        Message message = mapper.readValue(ctx.body(), Message.class);
+        Message updatedMessage = messageService.modifyMessage(message.getMessage_text(), message_id);
 
-            Message messageUpdated = messageService.updateMessage(mappedMessage);
-            ctx.json(messageUpdated);
-        } catch (ServiceException e) {
-            ctx.status(400); // Bad request if update fails
+        if (updatedMessage != null) {
+            ctx.json(mapper.writeValueAsString(updatedMessage)).status(200);
+        }
+        else {
+            ctx.status(400);
         }
     }
 
-    // Endpoint to retrieve messages by account ID
-    private void getMessagesByAccountId(Context ctx) {
-        try {
-            int accountId = Integer.parseInt(ctx.pathParam("account_id"));
-            List<Message> messages = messageService.getMessagesByAccountId(accountId);
-            ctx.json(messages);
-        } catch (ServiceException e) {
-            ctx.status(400); // Bad request if retrieval fails
-        }
+    // Extracts the user_id from the URL path into an integer and tasks the service layer to get all existing messages for the user in the database
+    // Return: JSON of messages
+    private void getMessageForUserHandler(Context ctx) throws JsonProcessingException {
+        int account_id = Integer.parseInt(ctx.pathParam("account_id"));
+        List<Message> messages = messageService.getMessages(account_id);
+        ctx.json(messages).status(200);
     }
-
 }
