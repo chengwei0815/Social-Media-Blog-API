@@ -5,37 +5,38 @@ import DAO.MessageDAO;
 
 import java.util.List;
 
-// Message in the Service Layer
+// Service class to handle message-related operations
 public class MessageService {
-    // Instance to access Message database
+
+    // DAO instance for interacting with the message database
     private MessageDAO messageDAO;
 
-    // Constructor
+    // Default constructor initializing the MessageDAO
     public MessageService() {
         messageDAO = new MessageDAO();
     }
 
-    // Copy Constructor
+    // Constructor for dependency injection of MessageDAO
     public MessageService(MessageDAO messageDAO) {
         this.messageDAO = messageDAO;
     }
 
-    // Return the result of Message's DAO layer method for createMessage for given message object (no message_id)
+    // Calls the DAO method to create a new message and returns the created message object
     public Message addMessage(Message message) {
         return messageDAO.createMessage(message.getPosted_by(), message.getMessage_text(), message.getTime_posted_epoch());
     }
 
-    // Return the result of Message's DAO layer method for getAllMessages
+    // Calls the DAO method to retrieve all messages from the database
     public List<Message> getAllMessages() {
         return messageDAO.getAllMessages();
     }
 
-    // Return the result of Message's DAO layer method for getMessageByMessageID for given message_id
+    // Calls the DAO method to retrieve a message by its message_id
     public Message getMessage(int message_id) {
         return messageDAO.getMessageByMessageID(message_id);
     }
 
-    // Return the result of Message's DAO layer method for deleteMessageByMessageID if given message_id exists in the database
+    // Calls the DAO method to delete a message by its message_id if the message exists
     public Message deleteMessage(int message_id) {
         Message message = messageDAO.getMessageByMessageID(message_id);
         
@@ -46,12 +47,12 @@ public class MessageService {
         return message;
     }
 
-    // Return the result of Message's DAO layer method for updateMessageByMessageID for given message_id
+    // Calls the DAO method to update a message by its message_id and returns the updated message
     public Message modifyMessage(String message_text, int message_id) {
         return messageDAO.updateMessageByMessageID(message_text, message_id) ? messageDAO.getMessageByMessageID(message_id) : null;
     }
 
-    // Return the result of Message's DAO layer method for getAllMessageByUserID for given user_id
+    // Calls the DAO method to retrieve all messages for a specific user by their user_id
     public List<Message> getMessages(int user_id) {
         return messageDAO.getAllMessageByUserID(user_id);
     }

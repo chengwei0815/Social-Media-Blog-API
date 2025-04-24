@@ -3,27 +3,28 @@ package Service;
 import Model.Account;
 import DAO.AccountDAO;
 
-// Account in the Service Layer
+// Service class to handle account-related operations
 public class AccountService {
-    // Instance to access Account database
+
+    // DAO instance for interacting with the account database
     private AccountDAO accountDAO;
 
-    // Constructor
+    // Default constructor initializing the AccountDAO
     public AccountService() {
         accountDAO = new AccountDAO();
     }
 
-    // Copy Constructor
+    // Constructor for dependency injection of AccountDAO
     public AccountService(AccountDAO accountDAO) {
         this.accountDAO = accountDAO;
     }
 
-    // Return the result of Account's DAO layer method for insertAccount for given account object (no account_id)
+    // Calls the DAO method to insert a new account, returning the account object without account_id
     public Account addAccount(Account account) {
         return accountDAO.insertAccount(account.getUsername(), account.getPassword());
     }
 
-    // Return the result of Account's DAO layer method for loginAccount for given account object
+    // Calls the DAO method to log in an account with the provided username and password
     public Account loginAccount(Account account) {
         return accountDAO.loginAccount(account.getUsername(), account.getPassword());
     }

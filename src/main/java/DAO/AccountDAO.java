@@ -7,7 +7,7 @@ import java.sql.*;
 
 public class AccountDAO {
 
-    // Return account object if record exists containing username
+    // Check if a username exists in the database
     public Boolean searchUsername(String username) {
         try (Connection connection = ConnectionUtil.getConnection()) {
             String sql = "SELECT * FROM account WHERE username = ?";
@@ -26,7 +26,7 @@ public class AccountDAO {
         return false;
     }
 
-    // Return account object with generated ID for given username and password
+    // Insert a new account with username and password into the database
     public Account insertAccount(String username, String password) {
         if (!this.searchUsername(username) && !username.isBlank() && password.length() >= 4) {
             try (Connection connection = ConnectionUtil.getConnection()) {
@@ -50,7 +50,7 @@ public class AccountDAO {
         return null;
     }
 
-    // Return account object for given username and password
+    // Authenticate a user with the given username and password
     public Account loginAccount(String username, String password) {
         try (Connection connection = ConnectionUtil.getConnection()) {
             String sql = "SELECT * FROM account WHERE username = ? AND password = ?";

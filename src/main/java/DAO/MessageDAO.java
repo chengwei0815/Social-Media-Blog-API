@@ -1,7 +1,6 @@
 package DAO;
 
 import Model.Message;
-
 import Util.ConnectionUtil;
 
 import java.sql.*;
@@ -10,14 +9,15 @@ import java.util.List;
 
 public class MessageDAO {
 
-    // Return message object for record with posted_by, message_text, and time_posted_epoch
+    // Creates and inserts a new message record into the database
+    // Returns the created message object if successful
     public Message createMessage(int posted_by, String message_text, long time_posted_epoch) {
         if (!message_text.isBlank() && message_text.length() < 256) {
             try (Connection connection = ConnectionUtil.getConnection()) {
                 String sql = "INSERT INTO message(posted_by, message_text, time_posted_epoch) VALUES(?, ?, ?)";
                 PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
                 
-                preparedStatement.setInt(1, posted_by); // rs will be empty if posted_by does not exist
+                preparedStatement.setInt(1, posted_by); 
                 preparedStatement.setString(2, message_text);
                 preparedStatement.setLong(3, time_posted_epoch);
 
@@ -35,7 +35,7 @@ public class MessageDAO {
         return null;
     }
 
-    // Return list of message objects containing all messages in the database
+    // Retrieves and returns all messages stored in the database
     public List<Message> getAllMessages() {
         List<Message> messages = new ArrayList<>();
         try (Connection connection = ConnectionUtil.getConnection()) {
@@ -57,7 +57,7 @@ public class MessageDAO {
         return messages;
     }
 
-    // Return message object for record for given message_id
+    // Fetches a single message record by its unique message_id
     public Message getMessageByMessageID(int message_id) {
         try (Connection connection = ConnectionUtil.getConnection()) {
             String sql = "SELECT * FROM message WHERE message_id = ?";
@@ -80,7 +80,7 @@ public class MessageDAO {
         return null;
     }
 
-    // Return boolean for the deletion of a message given message_id
+    // Deletes a message record by its unique message_id and returns the deletion status
     public Boolean deleteMessageByMessageID(int message_id) {
         try (Connection connection = ConnectionUtil.getConnection()) {
             String sql = "DELETE FROM message WHERE message_id = ?";
@@ -88,7 +88,7 @@ public class MessageDAO {
 
             preparedStatement.setInt(1, message_id);
 
-            return preparedStatement.executeUpdate() > 0 ? true : false;
+            return preparedStatement.executeUpdate() > 0;
         }
         catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -96,7 +96,8 @@ public class MessageDAO {
         return false;
     }
 
-    // Return boolean for the update of a message given message_text and message_id
+    // Updates the text of a message record for the given message_id
+    // Returns true if the update was successful, false otherwise
     public Boolean updateMessageByMessageID(String message_text, int message_id) {
         if (!message_text.isBlank() && message_text.length() < 256) {
             try (Connection connection = ConnectionUtil.getConnection()) {
@@ -106,7 +107,7 @@ public class MessageDAO {
                 preparedStatement.setString(1, message_text);
                 preparedStatement.setInt(2, message_id);
 
-                return preparedStatement.executeUpdate() > 0 ? true : false;
+                return preparedStatement.executeUpdate() > 0;
             }
             catch (SQLException e) {
                 System.out.println(e.getMessage());
@@ -115,7 +116,7 @@ public class MessageDAO {
         return false;
     }
 
-    // Return list of message objects containing all messages for given user_id
+    // Retrieves all messages posted by a specific user based on their user_id
     public List<Message> getAllMessageByUserID(int user_id) {
         List<Message> messages = new ArrayList<>();
         try (Connection connection = ConnectionUtil.getConnection()) {
